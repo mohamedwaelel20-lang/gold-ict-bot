@@ -1,0 +1,7 @@
+yfinance
+ta
+python-telegram-bot
+mplfinance
+pandas
+matplotlib
+pillow
