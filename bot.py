@@ -12,8 +12,8 @@ from datetime import datetime
 # TELEGRAM DATA
 # =========================================
 
-TOKEN = "8859133218:AAGn4oXHaZELJJmrkjqskgsDrqj9dmjvdaw"
-CHAT_ID = "1426294345"
+TOKEN = "PUT_YOUR_BOT_TOKEN"
+CHAT_ID = "PUT_YOUR_CHAT_ID"
 
 bot = Bot(token=TOKEN)
 
@@ -63,28 +63,74 @@ while True:
             continue
 
         # ============================
-        # GET GOLD DATA
+        # GET DATA
         # ============================
 
-        gold = yf.download(
+        gold_15m = yf.download(
             tickers="GC=F",
             period="1d",
             interval="15m"
         )
 
-        close = gold["Close"].squeeze()
+        gold_1h = yf.download(
+            tickers="GC=F",
+            period="5d",
+            interval="1h"
+        )
 
-        current_price = round(close.iloc[-1], 1)
+        gold_4h = yf.download(
+            tickers="GC=F",
+            period="1mo",
+            interval="4h"
+        )
+
+        close_15m = gold_15m["Close"].squeeze()
+        close_1h = gold_1h["Close"].squeeze()
+        close_4h = gold_4h["Close"].squeeze()
+
+        current_price = round(close_15m.iloc[-1], 1)
 
         # ============================
-        # RSI
+        # RSI MULTI TIMEFRAME
         # ============================
 
-        rsi = ta.momentum.RSIIndicator(close)
-        rsi_value = round(rsi.rsi().iloc[-1], 2)
+        rsi_15m = round(
+            ta.momentum.RSIIndicator(close_15m).rsi().iloc[-1],
+            2
+        )
+
+        rsi_1h = round(
+            ta.momentum.RSIIndicator(close_1h).rsi().iloc[-1],
+            2
+        )
+
+        rsi_4h = round(
+            ta.momentum.RSIIndicator(close_4h).rsi().iloc[-1],
+            2
+        )
+
+        bullish = 0
+        bearish = 0
+
+        if rsi_15m > 50:
+            bullish += 1
+        else:
+            bearish += 1
+
+        if rsi_1h > 50:
+            bullish += 1
+        else:
+            bearish += 1
+
+        if rsi_4h > 50:
+            bullish += 1
+        else:
+            bearish += 1
+
+        rsi_value = rsi_15m
 
         # ============================
-        # ICT SIGNALS
+        # SIGNALS
         # ============================
 
         signal = "WAIT"
@@ -95,7 +141,8 @@ while True:
         tp2 = 0
         confidence = 50
 
-        if rsi_value < 30:
+        # BUY
+        if bullish >= 2 and rsi_value < 40:
 
             signal = "BUY"
 
@@ -103,9 +150,10 @@ while True:
             tp1 = round(current_price + 15, 1)
             tp2 = round(current_price + 30, 1)
 
-            confidence = 80
+            confidence = 85
 
-        elif rsi_value > 70:
+        # SELL
+        elif bearish >= 2 and rsi_value > 60:
 
             signal = "SELL"
 
@@ -113,22 +161,27 @@ while True:
             tp1 = round(current_price - 15, 1)
             tp2 = round(current_price - 30, 1)
 
-            confidence = 80
+            confidence = 85
 
         # ============================
-        # PRINT TERMINAL
+        # TERMINAL
         # ============================
 
         print("\n===================================")
+
         print(f"Gold Price: {current_price}")
-        print(f"RSI: {rsi_value}")
+
+        print(f"15M RSI: {rsi_15m}")
+        print(f"1H RSI: {rsi_1h}")
+        print(f"4H RSI: {rsi_4h}")
+
         print(f"Signal: {signal}")
 
         # ============================
-        # PREPARE CHART
+        # CHART
         # ============================
 
-        df = gold.copy()
+        df = gold_15m.copy()
 
         df.index.name = "Date"
 
@@ -199,7 +252,9 @@ TP1: {tp1}
 
 TP2: {tp2}
 
-RSI: {rsi_value}
+15M RSI: {rsi_15m}
+1H RSI: {rsi_1h}
+4H RSI: {rsi_4h}
 
 Confidence: {confidence}%
 """
@@ -219,7 +274,7 @@ Confidence: {confidence}%
         print("\nSignal Sent To Telegram Successfully")
 
         # ============================
-        # WAIT
+        # WAIT 15 MIN
         # ============================
 
         time.sleep(900)
