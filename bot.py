@@ -1,4 +1,4 @@
-import yfinance as yf
+import investpy
 import pandas as pd
 import ta
 import time
@@ -20,7 +20,7 @@ bot = Bot(token=TOKEN)
 print("ULTIMATE ICT BOT STARTED...\n")
 
 # =========================================
-# MARKET TIME FILTER
+# MARKET FILTER
 # =========================================
 
 def market_open():
@@ -30,15 +30,12 @@ def market_open():
     weekday = now.weekday()
     hour = now.hour
 
-    # Saturday closed
     if weekday == 5:
         return False
 
-    # Sunday before open
     if weekday == 6 and hour < 19:
         return False
 
-    # Friday after close
     if weekday == 4 and hour >= 21:
         return False
 
@@ -52,10 +49,6 @@ while True:
 
     try:
 
-        # =================================
-        # MARKET CLOSED
-        # =================================
-
         if not market_open():
 
             print("Market Closed...")
@@ -65,35 +58,16 @@ while True:
             continue
 
         # =================================
-        # DOWNLOAD GOLD DATA
+        # GET GOLD DATA
         # =================================
 
-        gold_15m = yf.download(
-            tickers="XAUUSD=X",
-            period="1d",
-            interval="15m",
-            progress=False
+        gold = investpy.get_commodity_historical_data(
+            commodity='gold',
+            from_date='01/01/2025',
+            to_date=datetime.now().strftime("%d/%m/%Y")
         )
 
-        gold_1h = yf.download(
-            tickers="XAUUSD=X",
-            period="5d",
-            interval="1h",
-            progress=False
-        )
-
-        gold_4h = yf.download(
-            tickers="XAUUSD=X",
-            period="1mo",
-            interval="4h",
-            progress=False
-        )
-
-        # =================================
-        # CHECK EMPTY DATA
-        # =================================
-
-        if gold_15m.empty or gold_1h.empty or gold_4h.empty:
+        if gold.empty:
 
             print("No market data found...")
 
@@ -102,51 +76,23 @@ while True:
             continue
 
         # =================================
-        # CLOSE PRICES
+        # USE LAST 100 CANDLES
         # =================================
 
-        close_15m = gold_15m["Close"].squeeze()
-        close_1h = gold_1h["Close"].squeeze()
-        close_4h = gold_4h["Close"].squeeze()
+        df = gold.tail(100)
 
-        current_price = round(close_15m.iloc[-1], 1)
+        close = df["Close"]
+
+        current_price = round(close.iloc[-1], 1)
 
         # =================================
-        # RSI ANALYSIS
+        # RSI
         # =================================
 
-        rsi_15m = round(
-            ta.momentum.RSIIndicator(close_15m).rsi().iloc[-1],
+        rsi = round(
+            ta.momentum.RSIIndicator(close).rsi().iloc[-1],
             2
         )
-
-        rsi_1h = round(
-            ta.momentum.RSIIndicator(close_1h).rsi().iloc[-1],
-            2
-        )
-
-        rsi_4h = round(
-            ta.momentum.RSIIndicator(close_4h).rsi().iloc[-1],
-            2
-        )
-
-        bullish = 0
-        bearish = 0
-
-        if rsi_15m > 50:
-            bullish += 1
-        else:
-            bearish += 1
-
-        if rsi_1h > 50:
-            bullish += 1
-        else:
-            bearish += 1
-
-        if rsi_4h > 50:
-            bullish += 1
-        else:
-            bearish += 1
 
         signal = "WAIT"
 
@@ -157,10 +103,10 @@ while True:
         confidence = 50
 
         # =================================
-        # BUY SIGNAL
+        # BUY
         # =================================
 
-        if bullish >= 2 and rsi_15m < 40:
+        if rsi < 35:
 
             signal = "BUY"
 
@@ -173,10 +119,10 @@ while True:
             confidence = 85
 
         # =================================
-        # SELL SIGNAL
+        # SELL
         # =================================
 
-        elif bearish >= 2 and rsi_15m > 60:
+        elif rsi > 65:
 
             signal = "SELL"
 
@@ -189,26 +135,8 @@ while True:
             confidence = 85
 
         # =================================
-        # TERMINAL OUTPUT
+        # CHART STYLE
         # =================================
-
-        print("\n==============================")
-
-        print(f"Gold Price: {current_price}")
-
-        print(f"15M RSI: {rsi_15m}")
-        print(f"1H RSI: {rsi_1h}")
-        print(f"4H RSI: {rsi_4h}")
-
-        print(f"Signal: {signal}")
-
-        # =================================
-        # CREATE CHART
-        # =================================
-
-        df = gold_15m.copy()
-
-        df.index.name = "Date"
 
         mc = mpf.make_marketcolors(
             up='#26a69a',
@@ -226,37 +154,14 @@ while True:
             gridcolor='#363c4e'
         )
 
-        apds = []
-
-        if signal == "BUY":
-
-            apds.append(
-                mpf.make_addplot(
-                    [entry] * len(df),
-                    color='lime',
-                    width=1
-                )
-            )
-
-        elif signal == "SELL":
-
-            apds.append(
-                mpf.make_addplot(
-                    [entry] * len(df),
-                    color='red',
-                    width=1
-                )
-            )
-
         mpf.plot(
             df,
             type='candle',
             style=s,
-            title=f'XAUUSD ICT ANALYSIS | {signal}',
+            title=f'GOLD ICT ANALYSIS | {signal}',
             ylabel='Price',
             volume=False,
             figsize=(14, 8),
-            addplot=apds,
             savefig='chart.png'
         )
 
@@ -277,9 +182,7 @@ TP1: {tp1}
 
 TP2: {tp2}
 
-15M RSI: {rsi_15m}
-1H RSI: {rsi_1h}
-4H RSI: {rsi_4h}
+RSI: {rsi}
 
 Confidence: {confidence}%
 """
@@ -296,7 +199,7 @@ Confidence: {confidence}%
 
         asyncio.run(send_signal())
 
-        print("\nSignal Sent To Telegram Successfully")
+        print("Signal Sent Successfully")
 
         # =================================
         # WAIT 15 MIN
