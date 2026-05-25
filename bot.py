@@ -34,11 +34,11 @@ def market_open():
     if weekday == 5:
         return False
 
-    # Sunday open before market by 2h
+    # Sunday before open
     if weekday == 6 and hour < 19:
         return False
 
-    # Friday close
+    # Friday after close
     if weekday == 4 and hour >= 21:
         return False
 
@@ -52,44 +52,46 @@ while True:
 
     try:
 
-        # ============================
+        # =================================
         # MARKET CLOSED
-        # ============================
+        # =================================
 
         if not market_open():
 
             print("Market Closed...")
+
             time.sleep(1800)
+
             continue
 
-        # ============================
-        # DOWNLOAD DATA
-        # ============================
+        # =================================
+        # DOWNLOAD GOLD DATA
+        # =================================
 
         gold_15m = yf.download(
-            tickers="GC=F",
+            tickers="XAUUSD=X",
             period="1d",
             interval="15m",
             progress=False
         )
 
         gold_1h = yf.download(
-            tickers="GC=F",
+            tickers="XAUUSD=X",
             period="5d",
             interval="1h",
             progress=False
         )
 
         gold_4h = yf.download(
-            tickers="GC=F",
+            tickers="XAUUSD=X",
             period="1mo",
             interval="4h",
             progress=False
         )
 
-        # ============================
+        # =================================
         # CHECK EMPTY DATA
-        # ============================
+        # =================================
 
         if gold_15m.empty or gold_1h.empty or gold_4h.empty:
 
@@ -99,9 +101,9 @@ while True:
 
             continue
 
-        # ============================
+        # =================================
         # CLOSE PRICES
-        # ============================
+        # =================================
 
         close_15m = gold_15m["Close"].squeeze()
         close_1h = gold_1h["Close"].squeeze()
@@ -109,9 +111,9 @@ while True:
 
         current_price = round(close_15m.iloc[-1], 1)
 
-        # ============================
-        # RSI MULTI TIMEFRAME
-        # ============================
+        # =================================
+        # RSI ANALYSIS
+        # =================================
 
         rsi_15m = round(
             ta.momentum.RSIIndicator(close_15m).rsi().iloc[-1],
@@ -146,12 +148,6 @@ while True:
         else:
             bearish += 1
 
-        rsi_value = rsi_15m
-
-        # ============================
-        # SIGNALS
-        # ============================
-
         signal = "WAIT"
 
         entry = current_price
@@ -160,33 +156,43 @@ while True:
         tp2 = 0
         confidence = 50
 
+        # =================================
         # BUY SIGNAL
-        if bullish >= 2 and rsi_value < 40:
+        # =================================
+
+        if bullish >= 2 and rsi_15m < 40:
 
             signal = "BUY"
 
             sl = round(current_price - 10, 1)
+
             tp1 = round(current_price + 15, 1)
+
             tp2 = round(current_price + 30, 1)
 
             confidence = 85
 
+        # =================================
         # SELL SIGNAL
-        elif bearish >= 2 and rsi_value > 60:
+        # =================================
+
+        elif bearish >= 2 and rsi_15m > 60:
 
             signal = "SELL"
 
             sl = round(current_price + 10, 1)
+
             tp1 = round(current_price - 15, 1)
+
             tp2 = round(current_price - 30, 1)
 
             confidence = 85
 
-        # ============================
+        # =================================
         # TERMINAL OUTPUT
-        # ============================
+        # =================================
 
-        print("\n===================================")
+        print("\n==============================")
 
         print(f"Gold Price: {current_price}")
 
@@ -196,9 +202,9 @@ while True:
 
         print(f"Signal: {signal}")
 
-        # ============================
-        # CHART
-        # ============================
+        # =================================
+        # CREATE CHART
+        # =================================
 
         df = gold_15m.copy()
 
@@ -254,9 +260,9 @@ while True:
             savefig='chart.png'
         )
 
-        # ============================
+        # =================================
         # TELEGRAM MESSAGE
-        # ============================
+        # =================================
 
         caption = f"""
 🔥 GOLD ICT PRO SIGNAL 🔥
@@ -292,9 +298,9 @@ Confidence: {confidence}%
 
         print("\nSignal Sent To Telegram Successfully")
 
-        # ============================
+        # =================================
         # WAIT 15 MIN
-        # ============================
+        # =================================
 
         time.sleep(900)
 
