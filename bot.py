@@ -6,14 +6,14 @@ import asyncio
 import mplfinance as mpf
 
 from telegram import Bot
-from datetime import datetime
+from datetime import datetime, UTC
 
 # =========================================
 # TELEGRAM DATA
 # =========================================
 
-TOKEN = "PUT_YOUR_BOT_TOKEN"
-CHAT_ID = "PUT_YOUR_CHAT_ID"
+TOKEN = "8859133218:AAGn4oXHaZELJJmrkjqskgsDrqj9dmjvdaw"
+CHAT_ID = "1426294345"
 
 bot = Bot(token=TOKEN)
 
@@ -25,7 +25,7 @@ print("ULTIMATE ICT BOT STARTED...\n")
 
 def market_open():
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     weekday = now.weekday()
     hour = now.hour
@@ -63,26 +63,45 @@ while True:
             continue
 
         # ============================
-        # GET DATA
+        # DOWNLOAD DATA
         # ============================
 
         gold_15m = yf.download(
             tickers="GC=F",
             period="1d",
-            interval="15m"
+            interval="15m",
+            progress=False
         )
 
         gold_1h = yf.download(
             tickers="GC=F",
             period="5d",
-            interval="1h"
+            interval="1h",
+            progress=False
         )
 
         gold_4h = yf.download(
             tickers="GC=F",
             period="1mo",
-            interval="4h"
+            interval="4h",
+            progress=False
         )
+
+        # ============================
+        # CHECK EMPTY DATA
+        # ============================
+
+        if gold_15m.empty or gold_1h.empty or gold_4h.empty:
+
+            print("No market data found...")
+
+            time.sleep(60)
+
+            continue
+
+        # ============================
+        # CLOSE PRICES
+        # ============================
 
         close_15m = gold_15m["Close"].squeeze()
         close_1h = gold_1h["Close"].squeeze()
@@ -141,7 +160,7 @@ while True:
         tp2 = 0
         confidence = 50
 
-        # BUY
+        # BUY SIGNAL
         if bullish >= 2 and rsi_value < 40:
 
             signal = "BUY"
@@ -152,7 +171,7 @@ while True:
 
             confidence = 85
 
-        # SELL
+        # SELL SIGNAL
         elif bearish >= 2 and rsi_value > 60:
 
             signal = "SELL"
@@ -164,7 +183,7 @@ while True:
             confidence = 85
 
         # ============================
-        # TERMINAL
+        # TERMINAL OUTPUT
         # ============================
 
         print("\n===================================")
