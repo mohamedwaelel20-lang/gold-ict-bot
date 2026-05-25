@@ -1,4 +1,4 @@
-import investpy
+import yfinance as yf
 import pandas as pd
 import ta
 import time
@@ -58,16 +58,17 @@ while True:
             continue
 
         # =================================
-        # GET GOLD DATA
+        # GOLD DATA
         # =================================
 
-        gold = investpy.get_commodity_historical_data(
-            commodity='gold',
-            from_date='01/01/2025',
-            to_date=datetime.now().strftime("%d/%m/%Y")
+        df = yf.download(
+            "GC=F",
+            period="5d",
+            interval="15m",
+            auto_adjust=True
         )
 
-        if gold.empty:
+        if df.empty:
 
             print("No market data found...")
 
@@ -76,14 +77,14 @@ while True:
             continue
 
         # =================================
-        # USE LAST 100 CANDLES
+        # LAST 100 CANDLES
         # =================================
 
-        df = gold.tail(100)
+        df = df.tail(100)
 
         close = df["Close"]
 
-        current_price = round(close.iloc[-1], 1)
+        current_price = round(float(close.iloc[-1]), 1)
 
         # =================================
         # RSI
